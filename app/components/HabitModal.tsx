@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { Habit, HabitType, WEEKDAYS } from '../types';
-import { useApp } from '../context';
+import { Habit, HabitType, WEEKDAYS } from './types';
+import { useApp } from './context';
 
 interface Props {
   habit?: Habit | null;

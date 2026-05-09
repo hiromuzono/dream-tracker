@@ -2,7 +2,7 @@
 
 import React, { useRef } from 'react';
 import { Plus, LayoutDashboard, Zap } from 'lucide-react';
-import { useApp } from '../context';
+import { useApp } from './context';
 
 type TabId = 'dashboard' | string | 'habits';
 

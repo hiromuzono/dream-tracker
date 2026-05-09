@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { Plus, Pencil, Trash2, CheckCircle2, Circle, Flame, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useApp } from '../context';
-import { Habit } from '../types';
+import { useApp } from './context';
+import { Habit } from './types';
 import HabitModal from './HabitModal';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, getDay, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';

@@ -1,142 +1,131 @@
-"use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+'use client';
 
-type Step = "top" | "select_parent" | "parent_auth" | "child_auth";
+import React, { useState, useRef } from 'react';
+import { AppProvider, useApp } from './context';
+import Navigation from './components/Navigation';
+import Dashboard from './components/Dashboard';
+import GoalDetail from './components/GoalDetail';
+import Habits from './components/Habits';
+import GoalModal from './components/GoalModal';
+import { Goal, AppData } from './types';
+import { Download, Upload, Menu, X } from 'lucide-react';
 
-export default function Home() {
-  const router = useRouter();
-  const [step, setStep] = useState<Step>("top");
-  const [selectedParent, setSelectedParent] = useState<"中薗孝幸" | "中薗明子" | null>(null);
-  const [parentPassword, setParentPassword] = useState("");
-  const [parentAuthError, setParentAuthError] = useState("");
-  const [parentAuthLoading, setParentAuthLoading] = useState(false);
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+function ExportImportMenu({ onClose }: { onClose: () => void }) {
+  const { data, importData } = useApp();
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleSelectParent = (name: "中薗孝幸" | "中薗明子") => {
-    setSelectedParent(name); setParentPassword(""); setParentAuthError(""); setStep("parent_auth");
+  const handleExport = () => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dreamtracker_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    onClose();
   };
 
-  const handleParentAuth = async () => {
-    if (!selectedParent) return;
-    setParentAuthLoading(true); setParentAuthError("");
-    try {
-      const res = await fetch("/api/auth/parent", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ parent_name: selectedParent, password: parentPassword }) });
-      if (res.ok) { sessionStorage.setItem("role", "parent"); sessionStorage.setItem("parent_name", selectedParent); router.push("/parent"); }
-      else { const d = await res.json(); setParentAuthError(d.error || "パスワードが違います"); }
-    } catch { setParentAuthError("エラーが発生しました"); } finally { setParentAuthLoading(false); }
-  };
-
-  const handleChild = async () => {
-    setLoading(true); setError("");
-    try {
-      const res = await fetch("/api/auth/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
-      if (res.ok) { sessionStorage.setItem("role", "child"); router.push("/child"); }
-      else { const d = await res.json(); setError(d.error || "パスワードが違います"); }
-    } catch { setError("エラーが発生しました。"); } finally { setLoading(false); }
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target?.result as string) as AppData;
+        if (parsed.goals && parsed.habits && parsed.habitLogs) {
+          if (confirm('現在のデータを上書きしてインポートしますか？')) {
+            importData(parsed);
+            onClose();
+          }
+        } else {
+          alert('無効なDreamTrackerデータファイルです');
+        }
+      } catch {
+        alert('JSONファイルの読み込みに失敗しました');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-5 bg-[#f8f7f4]">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-[#1a1f3a] mb-5">
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-              <rect x="2" y="8" width="28" height="18" rx="1" stroke="#c9a84c" strokeWidth="2"/>
-              <line x1="2" y1="14" x2="30" y2="14" stroke="#c9a84c" strokeWidth="1.5" strokeDasharray="3 2"/>
-              <line x1="2" y1="20" x2="30" y2="20" stroke="#c9a84c" strokeWidth="1.5" strokeDasharray="3 2"/>
-              <circle cx="9" cy="8" r="2.5" fill="#f8f7f4" stroke="#c9a84c" strokeWidth="1.5"/>
-              <circle cx="23" cy="8" r="2.5" fill="#f8f7f4" stroke="#c9a84c" strokeWidth="1.5"/>
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-[#1a1f3a] tracking-tight">親孝行チケット</h1>
-          <p className="text-sm text-gray-500 mt-1">大人版お手伝い券アプリ</p>
+    <div className="absolute top-12 right-2 z-40 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-52 overflow-hidden">
+      <button
+        onClick={handleExport}
+        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-gray-800 transition-colors">
+        <Download size={15} />
+        データをエクスポート
+      </button>
+      <button
+        onClick={() => fileRef.current?.click()}
+        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-gray-800 transition-colors border-t border-gray-800">
+        <Upload size={15} />
+        データをインポート
+      </button>
+      <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
+    </div>
+  );
+}
+
+function AppContent() {
+  const { data } = useApp();
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [goalModal, setGoalModal] = useState<{ open: boolean; goal?: Goal }>({ open: false });
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const activeGoal = data.goals.find(g => g.id === activeTab) ?? null;
+
+  return (
+    <div className="min-h-screen bg-gray-950 flex flex-col">
+      <div className="relative flex items-center border-b border-gray-800 bg-gray-950 shrink-0">
+        <div className="flex-1 overflow-hidden">
+          <Navigation
+            activeTab={activeTab}
+            onTabChange={tab => { setActiveTab(tab); setMenuOpen(false); }}
+            onAddGoal={() => setGoalModal({ open: true })}
+          />
         </div>
-
-        {step === "top" && (
-          <>
-            <div className="bg-white border border-gray-200 p-5 mb-6">
-              <h2 className="text-sm font-semibold text-[#1a1f3a] mb-3 uppercase tracking-wide">About</h2>
-              <ul className="text-sm text-gray-600 space-y-2.5">
-                <li className="flex items-start gap-2.5"><span className="mt-0.5 shrink-0 text-[#c9a84c]"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="8"/><path d="M5 8l2 2 4-4" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg></span><span>親がやりたいことをチケットで申請できます</span></li>
-                <li className="flex items-start gap-2.5"><span className="mt-0.5 shrink-0 text-[#c9a84c]"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="8"/><path d="M5 8l2 2 4-4" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg></span><span>子が承認・辞退・交渉でリクエストに応答できます</span></li>
-                <li className="flex items-start gap-2.5"><span className="mt-0.5 shrink-0 text-[#c9a84c]"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="8"/><path d="M5 8l2 2 4-4" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg></span><span>チケット枚数で双方の負担を調整できます</span></li>
-              </ul>
-            </div>
-            <div className="space-y-3">
-              <button onClick={() => setStep("select_parent")} className="w-full bg-[#1a1f3a] hover:bg-[#252b4a] text-white font-semibold py-4 px-6 text-base transition-colors flex items-center justify-center gap-3">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="6" r="4" stroke="white" strokeWidth="1.5"/><path d="M3 18c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                親として使う
-              </button>
-              <button onClick={() => { setStep("child_auth"); setPassword(""); setError(""); }} className="w-full bg-white hover:bg-gray-50 text-[#1a1f3a] font-semibold py-4 px-6 text-base border border-[#1a1f3a] transition-colors flex items-center justify-center gap-3">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="6" r="4" stroke="#1a1f3a" strokeWidth="1.5"/><path d="M3 18c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="#1a1f3a" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                子として使う
-              </button>
-            </div>
-            <div className="mt-6 text-center">
-              <Link href="/guide" className="text-sm text-gray-400 hover:text-[#c9a84c] transition-colors underline underline-offset-4">使い方を見る</Link>
-            </div>
-          </>
-        )}
-
-        {step === "select_parent" && (
-          <>
-            <div className="mb-6">
-              <button onClick={() => setStep("top")} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors mb-4">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>戻る
-              </button>
-              <h2 className="text-xl font-bold text-[#1a1f3a] mb-1">どちらですか？</h2>
-              <p className="text-sm text-gray-500">申請者のお名前を選んでください</p>
-            </div>
-            <div className="space-y-3">
-              <button onClick={() => handleSelectParent("中薗孝幸")} className="w-full bg-[#1a1f3a] hover:bg-[#252b4a] text-white font-semibold py-5 px-6 text-lg transition-colors">中薗孝幸</button>
-              <button onClick={() => handleSelectParent("中薗明子")} className="w-full bg-[#1a1f3a] hover:bg-[#252b4a] text-white font-semibold py-5 px-6 text-lg transition-colors">中薗明子</button>
-            </div>
-          </>
-        )}
-
-        {step === "parent_auth" && (
-          <>
-            <div className="mb-6">
-              <button onClick={() => setStep("select_parent")} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors mb-4">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>戻る
-              </button>
-              <h2 className="text-xl font-bold text-[#1a1f3a] mb-1">{selectedParent}</h2>
-              <p className="text-sm text-gray-500">パスワードを入力してください</p>
-            </div>
-            <div className="bg-white border border-gray-200 p-5">
-              <input type="password" value={parentPassword} onChange={e => setParentPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && handleParentAuth()} placeholder="パスワード（未設定の場合は空白でOK）" className="w-full border border-gray-300 px-4 py-3 text-base mb-3 focus:outline-none focus:ring-1 focus:ring-[#1a1f3a] focus:border-[#1a1f3a]" autoFocus />
-              {parentAuthError && <p className="text-red-500 text-sm mb-3">{parentAuthError}</p>}
-              <button onClick={handleParentAuth} disabled={parentAuthLoading} className="w-full bg-[#1a1f3a] hover:bg-[#252b4a] disabled:opacity-40 text-white font-semibold py-3 transition-colors">
-                {parentAuthLoading ? "確認中..." : "入る"}
-              </button>
-            </div>
-            <p className="text-xs text-gray-400 text-center mt-3">初回はそのまま「入る」を押してください</p>
-          </>
-        )}
-
-        {step === "child_auth" && (
-          <>
-            <div className="mb-6">
-              <button onClick={() => setStep("top")} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors mb-4">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>戻る
-              </button>
-              <h2 className="text-xl font-bold text-[#1a1f3a] mb-1">パスワードを入力</h2>
-              <p className="text-sm text-gray-500">子として使うにはパスワードが必要です</p>
-            </div>
-            <div className="bg-white border border-gray-200 p-5">
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && handleChild()} placeholder="パスワード" className="w-full border border-gray-300 px-4 py-3 text-base mb-3 focus:outline-none focus:ring-1 focus:ring-[#1a1f3a] focus:border-[#1a1f3a]" autoFocus />
-              {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
-              <button onClick={handleChild} disabled={loading || !password} className="w-full bg-[#1a1f3a] hover:bg-[#252b4a] disabled:opacity-40 text-white font-semibold py-3 transition-colors">
-                {loading ? "確認中..." : "入る"}
-              </button>
-            </div>
-          </>
-        )}
+        {/* Settings button */}
+        <div className="relative shrink-0 pr-2">
+          <button
+            onClick={() => setMenuOpen(v => !v)}
+            className="p-2 text-gray-500 hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-800">
+            {menuOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
+          {menuOpen && <ExportImportMenu onClose={() => setMenuOpen(false)} />}
+        </div>
       </div>
-    </main>
+
+      <main className="flex-1 overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 49px)' }}>
+        {activeTab === 'dashboard' && <Dashboard />}
+        {activeTab === 'habits' && <Habits />}
+        {activeGoal && <GoalDetail key={activeGoal.id} goal={activeGoal} />}
+        {!activeGoal && activeTab !== 'dashboard' && activeTab !== 'habits' && (
+          <div className="flex items-center justify-center h-full text-gray-600">
+            目標が見つかりません
+          </div>
+        )}
+      </main>
+
+      {goalModal.open && (
+        <GoalModal
+          goal={goalModal.goal}
+          onClose={() => setGoalModal({ open: false })}
+        />
+      )}
+
+      {/* Backdrop for menu */}
+      {menuOpen && (
+        <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
+      )}
+    </div>
+  );
+}
+
+export default function DreamTrackerPage() {
+  return (
+    <AppProvider>
+      <AppContent />
+    </AppProvider>
   );
 }
