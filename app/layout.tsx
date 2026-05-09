@@ -1,6 +1,15 @@
 import type { Metadata } from "next";
 import "./globals.css";
-export const metadata: Metadata = { title: "親孝行チケット", description: "大人版お手伝い券 - 親子で使う親孝行サポートアプリ" };
+
+export const metadata: Metadata = {
+  title: "DreamTracker - 目標達成管理アプリ",
+  description: "人生の目標をマイルストーンとタスクで管理し、毎日の習慣と進捗率で夢の達成を追跡するアプリです。",
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (<html lang="ja"><body className="bg-[#f8f7f4] min-h-screen text-[#2d2d2d]">{children}</body></html>);
+  return (
+    <html lang="ja">
+      <body className="bg-gray-950 min-h-screen text-white">{children}</body>
+    </html>
+  );
 }

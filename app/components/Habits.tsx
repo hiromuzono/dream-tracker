@@ -87,26 +87,27 @@ function CalendarView() {
   const [month, setMonth] = useState(new Date());
 
   const dailyHabits = data.habits.filter(h => h.type === 'daily');
+  const weeklyHabits = data.habits.filter(h => h.type === 'weekly');
   const start = startOfMonth(month);
   const end = endOfMonth(month);
   const days = eachDayOfInterval({ start, end });
   const firstDayOfWeek = (getDay(start) + 6) % 7; // Monday-first
 
-  const getCellIntensity = (date: Date) => {
-    const ds = format(date, 'yyyy-MM-dd');
-    const checked = dailyHabits.filter(h => (data.habitLogs[h.id] || []).includes(ds)).length;
-    if (dailyHabits.length === 0) return 0;
-    return checked / dailyHabits.length;
-  };
+  const JP_DAY_NAMES = ['日', '月', '火', '水', '木', '金', '土'];
 
-  const intensityToColor = (v: number) => {
-    if (v === 0) return 'bg-gray-800';
-    if (v < 0.34) return 'bg-indigo-900';
-    if (v < 0.67) return 'bg-indigo-600';
-    return 'bg-indigo-400';
+  const getCounts = (date: Date) => {
+    const ds = format(date, 'yyyy-MM-dd');
+    const dayName = JP_DAY_NAMES[date.getDay()];
+    const weeklyForDay = weeklyHabits.filter(h => h.days.includes(dayName));
+    const applicable = [...dailyHabits, ...weeklyForDay];
+    const total = applicable.length;
+    if (total === 0) return { done: 0, total: 0 };
+    const done = applicable.filter(h => (data.habitLogs[h.id] || []).includes(ds)).length;
+    return { done, total };
   };
 
   const weekdays = ['月', '火', '水', '木', '金', '土', '日'];
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
 
   return (
     <div>
@@ -127,23 +128,29 @@ function CalendarView() {
       <div className="grid grid-cols-7 gap-1">
         {Array.from({ length: firstDayOfWeek }).map((_, i) => <div key={`e-${i}`} />)}
         {days.map(d => {
-          const intensity = getCellIntensity(d);
-          const isToday = format(d, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+          const { done, total } = getCounts(d);
+          const isToday = format(d, 'yyyy-MM-dd') === todayStr;
+          const allDone = total > 0 && done === total;
+          const hasSome = done > 0;
+          const bg = allDone ? 'rgba(99,102,241,0.4)' : hasSome ? 'rgba(99,102,241,0.15)' : '#1f2937';
           return (
             <div key={d.toISOString()}
-              className={`aspect-square rounded-md flex items-center justify-center text-xs transition-all ${intensityToColor(intensity)} ${isToday ? 'ring-2 ring-indigo-400' : ''}`}>
-              <span className={intensity > 0 ? 'text-white' : 'text-gray-600'}>{d.getDate()}</span>
+              className={`aspect-square rounded-md flex flex-col items-center justify-center transition-all ${isToday ? 'ring-2 ring-indigo-400' : ''}`}
+              style={{ background: bg }}>
+              <span className="text-xs" style={{ color: total > 0 ? '#9ca3af' : '#4b5563' }}>
+                {d.getDate()}
+              </span>
+              {total > 0 && (
+                <span className="font-bold leading-none mt-0.5"
+                  style={{ fontSize: 9, color: allDone ? '#a5b4fc' : hasSome ? '#6366f1' : '#4b5563' }}>
+                  {done}/{total}
+                </span>
+              )}
             </div>
           );
         })}
       </div>
-      <div className="flex items-center gap-3 mt-3 justify-end">
-        <span className="text-gray-600 text-xs">少</span>
-        {['bg-gray-800', 'bg-indigo-900', 'bg-indigo-600', 'bg-indigo-400'].map((c, i) => (
-          <div key={i} className={`w-4 h-4 rounded-sm ${c}`} />
-        ))}
-        <span className="text-gray-600 text-xs">多</span>
-      </div>
+      <p className="text-gray-700 text-xs mt-3 text-right">数値 = 実行数/その日の習慣数</p>
     </div>
   );
 }
