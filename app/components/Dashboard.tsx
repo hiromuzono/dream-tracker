@@ -2,10 +2,10 @@
 
 import React, { useState } from 'react';
 import { CheckCircle2, Circle } from 'lucide-react';
-import { useApp } from './context';
+import { useApp } from '../context';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isToday, isSameWeek, isSameMonth } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { Goal, Task, Habit } from './types';
+import { Goal, Task, Habit } from '../types';
 
 type Tab = 'today' | 'week' | 'month';
 

@@ -2,8 +2,8 @@
 
 import React, { useState, useRef } from 'react';
 import { ChevronRight, ChevronDown, Plus, Pencil, Trash2, Clock, CheckCircle2, Circle, GripVertical } from 'lucide-react';
-import { Goal, Milestone, Task } from './types';
-import { useApp } from './context';
+import { Goal, Milestone, Task } from '../types';
+import { useApp } from '../context';
 import MilestoneModal from './MilestoneModal';
 import TaskModal from './TaskModal';
 import GoalModal from './GoalModal';

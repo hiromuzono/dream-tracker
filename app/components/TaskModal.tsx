@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { Task } from './types';
-import { useApp } from './context';
+import { Task } from '../types';
+import { useApp } from '../context';
 
 interface Props {
   goalId: string;

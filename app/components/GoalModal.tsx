@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { Goal, GOAL_COLORS } from './types';
-import { useApp } from './context';
+import { Goal, GOAL_COLORS } from '../types';
+import { useApp } from '../context';
 
 interface Props {
   goal?: Goal | null;
