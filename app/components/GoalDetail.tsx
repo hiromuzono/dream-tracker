@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { ChevronRight, ChevronDown, Plus, Pencil, Trash2, Clock, CheckCircle2, Circle, GripVertical } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronUp, Plus, Pencil, Trash2, Clock, CheckCircle2, Circle, GripVertical } from 'lucide-react';
 import { Goal, Milestone, Task } from '../types';
 import { useApp } from '../context';
 import MilestoneModal from './MilestoneModal';
@@ -84,7 +84,6 @@ function MilestoneRow({ goal, milestone, index, showCompleted, dragOver, onDragS
       onDrop={e => { e.preventDefault(); onDrop(); }}
     >
       <div className="flex items-center gap-2 px-3 py-3 bg-gray-800/50 hover:bg-gray-800 transition-colors">
-        {/* Drag handle for milestone */}
         <div
           draggable
           onDragStart={e => { e.stopPropagation(); onDragStart(); }}
@@ -93,14 +92,12 @@ function MilestoneRow({ goal, milestone, index, showCompleted, dragOver, onDragS
         >
           <GripVertical size={15} />
         </div>
-
         <div className="cursor-pointer flex-1 min-w-0 flex items-center gap-2 flex-wrap" onClick={() => setOpen(!open)}>
           {open ? <ChevronDown size={15} className="text-gray-400 shrink-0" /> : <ChevronRight size={15} className="text-gray-400 shrink-0" />}
           <span className="text-white font-medium truncate">{milestone.title}</span>
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.color}`}>{badge.label}</span>
           <span className="text-gray-500 text-xs">{milestone.period}</span>
         </div>
-
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-gray-400 text-xs hidden sm:inline">{doneCount}/{milestone.tasks.length}</span>
           <span className="text-gray-300 text-sm font-medium">{taskPct}%</span>
@@ -111,7 +108,7 @@ function MilestoneRow({ goal, milestone, index, showCompleted, dragOver, onDragS
 
       {open && (
         <div className="px-3 pb-3 pt-1 space-y-1">
-          {tasks.map((task, ti) => {
+          {tasks.map((task) => {
             const realIdx = milestone.tasks.findIndex(t => t.id === task.id);
             return (
               <div
@@ -169,6 +166,7 @@ interface Props {
 
 export default function GoalDetail({ goal }: Props) {
   const { deleteGoal, reorderMilestones } = useApp();
+  const [headerOpen, setHeaderOpen] = useState(true);
   const [showCompleted, setShowCompleted] = useState(true);
   const [msModal, setMsModal] = useState(false);
   const [editGoalModal, setEditGoalModal] = useState(false);
@@ -191,8 +189,9 @@ export default function GoalDetail({ goal }: Props) {
   return (
     <div className="flex flex-col h-full">
       {/* Goal Header */}
-      <div className="p-4 sm:p-6 border-b border-gray-800 bg-gray-900">
-        <div className="flex items-start justify-between mb-4">
+      <div className="border-b border-gray-800 bg-gray-900">
+        {/* 常時表示: 目標名・期間・操作ボタン */}
+        <div className="flex items-start justify-between p-4 sm:p-6 pb-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="text-2xl sm:text-3xl">{goal.emoji}</span>
@@ -203,6 +202,13 @@ export default function GoalDetail({ goal }: Props) {
             </div>
           </div>
           <div className="flex gap-1 shrink-0 ml-2">
+            {/* 折りたたみトグル */}
+            <button
+              onClick={() => setHeaderOpen(v => !v)}
+              className="text-gray-500 hover:text-gray-300 p-1.5 rounded-lg hover:bg-gray-800 transition-colors"
+              title={headerOpen ? '進捗を隠す' : '進捗を表示'}>
+              {headerOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            </button>
             <button onClick={() => setEditGoalModal(true)} className="text-gray-500 hover:text-gray-300 p-1.5 rounded-lg hover:bg-gray-800 transition-colors">
               <Pencil size={15} />
             </button>
@@ -214,39 +220,41 @@ export default function GoalDetail({ goal }: Props) {
           </div>
         </div>
 
-        {/* Progress bars */}
-        <div className="space-y-2 mb-4">
-          <div className="flex items-center gap-3">
-            <span className="text-gray-400 text-xs w-16 sm:w-20 shrink-0">タスク進捗</span>
-            <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${taskPct}%`, backgroundColor: goal.color }} />
+        {/* 折りたたみ: 進捗バー・ペース比較 */}
+        {headerOpen && (
+          <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <span className="text-gray-400 text-xs w-16 sm:w-20 shrink-0">タスク進捗</span>
+                <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${taskPct}%`, backgroundColor: goal.color }} />
+                </div>
+                <span className="text-gray-300 text-sm font-medium w-10 text-right">{taskPct}%</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-gray-400 text-xs w-16 sm:w-20 shrink-0">時間進捗</span>
+                <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-500 opacity-70" style={{ width: `${timePct}%`, backgroundColor: goal.color }} />
+                </div>
+                <span className="text-gray-300 text-sm font-medium w-10 text-right">{timePct}%</span>
+              </div>
             </div>
-            <span className="text-gray-300 text-sm font-medium w-10 text-right">{taskPct}%</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-gray-400 text-xs w-16 sm:w-20 shrink-0">時間進捗</span>
-            <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-500 opacity-70" style={{ width: `${timePct}%`, backgroundColor: goal.color }} />
+            <div className="bg-gray-800/60 rounded-xl p-3 text-xs sm:text-sm space-y-1">
+              <div className="flex items-center gap-2 text-gray-400">
+                <span>📅</span>
+                <span>経過時間ペース: <span className="text-white font-medium">{elapsedPace}%</span></span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-400">
+                <span>✅</span>
+                <span>実績達成率: <span className="text-white font-medium">{taskPct}%</span></span>
+              </div>
+              <div className={`flex items-center gap-2 font-medium ${diff >= 0 ? 'text-green-400' : 'text-amber-400'}`}>
+                <span>{diff >= 0 ? '✅' : '⚠️'}</span>
+                <span>{diff >= 0 ? `+${diff}% ペース通りです` : `${diff}% ペースより遅れています`}</span>
+              </div>
             </div>
-            <span className="text-gray-300 text-sm font-medium w-10 text-right">{timePct}%</span>
           </div>
-        </div>
-
-        {/* Pace comparison */}
-        <div className="bg-gray-800/60 rounded-xl p-3 text-xs sm:text-sm space-y-1">
-          <div className="flex items-center gap-2 text-gray-400">
-            <span>📅</span>
-            <span>経過時間ペース: <span className="text-white font-medium">{elapsedPace}%</span></span>
-          </div>
-          <div className="flex items-center gap-2 text-gray-400">
-            <span>✅</span>
-            <span>実績達成率: <span className="text-white font-medium">{taskPct}%</span></span>
-          </div>
-          <div className={`flex items-center gap-2 font-medium ${diff >= 0 ? 'text-green-400' : 'text-amber-400'}`}>
-            <span>{diff >= 0 ? '✅' : '⚠️'}</span>
-            <span>{diff >= 0 ? `+${diff}% ペース通りです` : `${diff}% ペースより遅れています`}</span>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Controls */}

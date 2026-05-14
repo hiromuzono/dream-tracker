@@ -160,6 +160,23 @@ export default function Habits() {
   const [addModal, setAddModal] = useState<{ type: 'daily' | 'weekly' | 'monthly' } | null>(null);
   const [innerTab, setInnerTab] = useState<'check' | 'calendar'>('check');
   const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const [targetDate, setTargetDate] = useState(todayStr);
+
+  const isToday = targetDate === todayStr;
+
+  const goBack = () => {
+    const d = parseISO(targetDate);
+    d.setDate(d.getDate() - 1);
+    setTargetDate(format(d, 'yyyy-MM-dd'));
+  };
+
+  const goForward = () => {
+    if (!isToday) {
+      const d = parseISO(targetDate);
+      d.setDate(d.getDate() + 1);
+      setTargetDate(format(d, 'yyyy-MM-dd'));
+    }
+  };
 
   const daily = data.habits.filter(h => h.type === 'daily');
   const weekly = data.habits.filter(h => h.type === 'weekly');
@@ -167,27 +184,49 @@ export default function Habits() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-6 border-b border-gray-800">
+      <div className="p-4 sm:p-6 border-b border-gray-800">
         <div className="flex items-center gap-2">
           <span className="text-xl">⚡</span>
           <h1 className="text-white text-xl font-bold">習慣管理</h1>
         </div>
       </div>
 
-      <div className="px-6 py-3 border-b border-gray-800">
+      <div className="px-4 sm:px-6 py-3 border-b border-gray-800 flex items-center gap-3 flex-wrap">
         <div className="flex gap-1 bg-gray-800 rounded-lg p-1 w-fit">
           <button onClick={() => setInnerTab('check')}
             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${innerTab === 'check' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}>
-            今日のチェック
+            チェック
           </button>
           <button onClick={() => setInnerTab('calendar')}
             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${innerTab === 'calendar' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}>
             カレンダー
           </button>
         </div>
+
+        {/* 日付ナビゲーション（チェックタブのみ） */}
+        {innerTab === 'check' && (
+          <div className="flex items-center gap-2">
+            <button onClick={goBack} className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-gray-800 transition-colors">
+              <ChevronLeft size={16} />
+            </button>
+            <span className={`text-sm font-medium px-2 ${isToday ? 'text-indigo-400' : 'text-gray-300'}`}>
+              {isToday ? '今日' : format(parseISO(targetDate), 'M月d日（eee）', { locale: ja })}
+            </span>
+            <button onClick={goForward} disabled={isToday}
+              className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+              <ChevronRight size={16} />
+            </button>
+            {!isToday && (
+              <button onClick={() => setTargetDate(todayStr)}
+                className="text-xs px-2 py-1 rounded-lg border border-gray-700 text-gray-500 hover:text-indigo-400 hover:border-indigo-500 transition-colors">
+                今日に戻る
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         {innerTab === 'calendar' ? (
           <CalendarView />
         ) : (
@@ -205,7 +244,7 @@ export default function Habits() {
                 <p className="text-gray-700 text-sm text-center py-4">毎日の習慣はありません</p>
               ) : (
                 <div className="space-y-2">
-                  {daily.map(h => <HabitRow key={h.id} habit={h} todayStr={todayStr} />)}
+                  {daily.map(h => <HabitRow key={h.id} habit={h} todayStr={targetDate} />)}
                 </div>
               )}
             </div>
@@ -223,7 +262,7 @@ export default function Habits() {
                 <p className="text-gray-700 text-sm text-center py-4">毎週の習慣はありません</p>
               ) : (
                 <div className="space-y-2">
-                  {weekly.map(h => <HabitRow key={h.id} habit={h} todayStr={todayStr} />)}
+                  {weekly.map(h => <HabitRow key={h.id} habit={h} todayStr={targetDate} />)}
                 </div>
               )}
             </div>
@@ -241,7 +280,7 @@ export default function Habits() {
                 <p className="text-gray-700 text-sm text-center py-4">毎月の習慣はありません</p>
               ) : (
                 <div className="space-y-2">
-                  {monthly.map(h => <HabitRow key={h.id} habit={h} todayStr={todayStr} />)}
+                  {monthly.map(h => <HabitRow key={h.id} habit={h} todayStr={targetDate} />)}
                 </div>
               )}
             </div>

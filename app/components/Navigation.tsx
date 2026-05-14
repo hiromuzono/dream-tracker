@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { Plus, LayoutDashboard, Zap, Download, Upload, Menu, X } from 'lucide-react';
+import { Plus, LayoutDashboard, Zap, Download, Upload, Menu, X, ChevronUp, ChevronDown } from 'lucide-react';
 import { useApp } from '../context';
 import { AppData } from '../types';
 
@@ -67,9 +67,11 @@ function ExportImportMenu({ onClose }: { onClose: () => void }) {
 }
 
 export default function Navigation({ activeTab, onTabChange, onAddGoal }: Props) {
-  const { data } = useApp();
+  const { data, reorderGoals } = useApp();
   const [goalDrawer, setGoalDrawer] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [dragGoalIdx, setDragGoalIdx] = useState<number | null>(null);
+  const [dropGoalIdx, setDropGoalIdx] = useState<number | null>(null);
 
   const isGoalActive = data.goals.some(g => g.id === activeTab);
 
@@ -78,6 +80,14 @@ export default function Navigation({ activeTab, onTabChange, onAddGoal }: Props)
 
   const openDrawer = () => { setGoalDrawer(v => !v); setMenuOpen(false); };
   const openMenu = () => { setMenuOpen(v => !v); setGoalDrawer(false); };
+
+  const handleGoalDrop = (toIdx: number) => {
+    if (dragGoalIdx !== null && dragGoalIdx !== toIdx) {
+      reorderGoals(dragGoalIdx, toIdx);
+    }
+    setDragGoalIdx(null);
+    setDropGoalIdx(null);
+  };
 
   return (
     <div className="relative border-b border-gray-800 bg-gray-950 shrink-0">
@@ -100,20 +110,38 @@ export default function Navigation({ activeTab, onTabChange, onAddGoal }: Props)
             <>
               <div className="fixed inset-0 z-40" onClick={() => setGoalDrawer(false)} />
               <div className="absolute top-full left-0 z-50 shadow-2xl border border-gray-700 rounded-b-xl overflow-hidden"
-                style={{ background: '#111827', minWidth: 180 }}>
+                style={{ background: '#111827', minWidth: 200 }}>
                 {data.goals.length === 0 && (
                   <p className="px-4 py-3 text-xs text-gray-500 text-center">目標がありません</p>
                 )}
-                {data.goals.map(g => (
-                  <button key={g.id} onClick={() => { onTabChange(g.id); setGoalDrawer(false); }}
-                    className="w-full flex items-center gap-2 px-4 py-3 text-sm text-left border-b border-gray-800 last:border-0 transition-colors"
-                    style={{
-                      color: activeTab === g.id ? 'white' : '#9ca3af',
-                      background: activeTab === g.id ? 'rgba(99,102,241,0.2)' : 'transparent',
-                    }}>
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
-                    <span className="truncate">{g.emoji} {g.name}</span>
-                  </button>
+                {data.goals.map((g, idx) => (
+                  <div key={g.id} className="flex items-center border-b border-gray-800 last:border-0">
+                    <button
+                      onClick={() => { onTabChange(g.id); setGoalDrawer(false); }}
+                      className="flex-1 flex items-center gap-2 px-4 py-3 text-sm text-left transition-colors"
+                      style={{
+                        color: activeTab === g.id ? 'white' : '#9ca3af',
+                        background: activeTab === g.id ? 'rgba(99,102,241,0.2)' : 'transparent',
+                      }}>
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
+                      <span className="truncate">{g.emoji} {g.name}</span>
+                    </button>
+                    {/* 並び替えボタン */}
+                    <div className="flex flex-col pr-2 shrink-0">
+                      <button
+                        onClick={() => idx > 0 && reorderGoals(idx, idx - 1)}
+                        disabled={idx === 0}
+                        className="text-gray-600 hover:text-gray-300 disabled:opacity-20 p-0.5 transition-colors">
+                        <ChevronUp size={12} />
+                      </button>
+                      <button
+                        onClick={() => idx < data.goals.length - 1 && reorderGoals(idx, idx + 1)}
+                        disabled={idx === data.goals.length - 1}
+                        className="text-gray-600 hover:text-gray-300 disabled:opacity-20 p-0.5 transition-colors">
+                        <ChevronDown size={12} />
+                      </button>
+                    </div>
+                  </div>
                 ))}
                 <button onClick={() => { onAddGoal(); setGoalDrawer(false); }}
                   className="w-full flex items-center gap-2 px-4 py-3 text-sm border-t border-gray-700 text-gray-500 hover:text-indigo-400 transition-colors">
@@ -148,10 +176,18 @@ export default function Navigation({ activeTab, onTabChange, onAddGoal }: Props)
           <span>ダッシュボード</span>
         </button>
 
+        {/* 目標タブ（PC: ドラッグ&ドロップで並び替え） */}
         <div className="flex items-center overflow-x-auto flex-1">
-          {data.goals.map(goal => (
-            <button key={goal.id} onClick={() => onTabChange(goal.id)}
-              className={`flex items-center gap-1.5 px-4 py-3.5 text-sm font-medium shrink-0 ${tabCls(activeTab === goal.id)}`}>
+          {data.goals.map((goal, idx) => (
+            <button
+              key={goal.id}
+              draggable
+              onDragStart={() => setDragGoalIdx(idx)}
+              onDragOver={e => { e.preventDefault(); setDropGoalIdx(idx); }}
+              onDrop={() => handleGoalDrop(idx)}
+              onDragEnd={() => { setDragGoalIdx(null); setDropGoalIdx(null); }}
+              onClick={() => onTabChange(goal.id)}
+              className={`flex items-center gap-1.5 px-4 py-3.5 text-sm font-medium shrink-0 transition-all cursor-grab active:cursor-grabbing ${tabCls(activeTab === goal.id)} ${dropGoalIdx === idx ? 'bg-indigo-500/10' : ''}`}>
               <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: goal.color }} />
               <span className="max-w-[120px] truncate">{goal.emoji} {goal.name}</span>
             </button>
