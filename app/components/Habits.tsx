@@ -10,6 +10,21 @@ import { ja } from 'date-fns/locale';
 
 const JP_DAYS_GROWTH = ['日', '月', '火', '水', '木', '金', '土'];
 
+function getWeekKey(dateStr: string): string {
+  const d = parseISO(dateStr);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diff);
+  return format(monday, 'yyyy-MM-dd');
+}
+
+function getLogKey(habitType: string, dateStr: string): string {
+  if (habitType === 'weekly') return getWeekKey(dateStr);
+  if (habitType === 'monthly') return dateStr.slice(0, 7);
+  return dateStr;
+}
+
 function calcGrowthScore(habits: Habit[], habitLogs: Record<string, string[]>, standaloneTasks: StandaloneTask[], startDate: string) {
   const yd = new Date(); yd.setDate(yd.getDate() - 1);
   const endStr = format(yd, 'yyyy-MM-dd');
@@ -26,7 +41,7 @@ function calcGrowthScore(habits: Habit[], habitLogs: Record<string, string[]>, s
     ];
     if (applicable.length > 0) {
       totalDays++;
-      const allDone = applicable.every(h => (habitLogs[h.id] || []).includes(ds));
+      const allDone = applicable.every(h => (habitLogs[h.id] || []).includes(getLogKey(h.type, ds)));
       if (allDone) { score *= 1.01; allDoneDays++; }
       else { score *= 0.99; missDays++; }
     }
@@ -94,7 +109,8 @@ function HabitRow({ habit, todayStr }: HabitRowProps) {
   const [editModal, setEditModal] = useState(false);
 
   const logs = data.habitLogs[habit.id] || [];
-  const checked = logs.includes(todayStr);
+  const logKey = getLogKey(habit.type, todayStr);
+  const checked = logs.includes(logKey);
   const streak = habit.type === 'daily' ? calcStreak(logs) : 0;
   const goal = habit.goalId ? data.goals.find(g => g.id === habit.goalId) : undefined;
 
@@ -103,7 +119,7 @@ function HabitRow({ habit, todayStr }: HabitRowProps) {
       {goal && <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: goal.color }} />}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className={`text-sm ${checked && habit.type === 'daily' ? 'text-gray-400' : 'text-gray-200'}`}>
+          <span className={`text-sm ${checked ? 'text-gray-400' : 'text-gray-200'}`}>
             {habit.title}
           </span>
           {goal && (
@@ -129,13 +145,11 @@ function HabitRow({ habit, todayStr }: HabitRowProps) {
         <button onClick={() => deleteHabit(habit.id)} className="text-gray-600 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Trash2 size={14} />
         </button>
-        {habit.type === 'daily' && (
-          <button onClick={() => toggleHabitLog(habit.id, todayStr)} className="ml-1">
-            {checked
-              ? <CheckCircle2 size={22} className="text-indigo-400" />
-              : <Circle size={22} className="text-gray-600" />}
-          </button>
-        )}
+        <button onClick={() => toggleHabitLog(habit.id, logKey)} className="ml-1">
+          {checked
+            ? <CheckCircle2 size={22} className="text-indigo-400" />
+            : <Circle size={22} className="text-gray-600" />}
+        </button>
       </div>
       {editModal && <HabitModal habit={habit} onClose={() => setEditModal(false)} />}
     </div>
@@ -162,7 +176,7 @@ function CalendarView() {
     const applicable = [...dailyHabits, ...weeklyForDay];
     const total = applicable.length;
     if (total === 0) return { done: 0, total: 0 };
-    const done = applicable.filter(h => (data.habitLogs[h.id] || []).includes(ds)).length;
+    const done = applicable.filter(h => (data.habitLogs[h.id] || []).includes(getLogKey(h.type, ds))).length;
     return { done, total };
   };
 
