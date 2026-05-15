@@ -158,6 +158,12 @@ export default function Navigation({ activeTab, onTabChange, onAddGoal }: Props)
           ⚡ 習慣
         </button>
 
+        <button
+          onClick={() => { onTabChange('tasks'); setGoalDrawer(false); }}
+          className={`flex-1 text-xs font-medium ${tabCls(activeTab === 'tasks')}`}>
+          📋 タスク
+        </button>
+
         <div className="relative shrink-0 flex items-center pr-1">
           <button onClick={openMenu}
             className="p-2 text-gray-500 hover:text-gray-300 transition-colors">
@@ -204,6 +210,13 @@ export default function Navigation({ activeTab, onTabChange, onAddGoal }: Props)
           className={`flex items-center gap-1.5 px-4 py-3.5 text-sm font-medium shrink-0 ${tabCls(activeTab === 'habits')}`}>
           <Zap size={15} />
           <span>習慣</span>
+        </button>
+
+        <button
+          onClick={() => onTabChange('tasks')}
+          className={`flex items-center gap-1.5 px-4 py-3.5 text-sm font-medium shrink-0 ${tabCls(activeTab === 'tasks')}`}>
+          <span>📋</span>
+          <span>タスク</span>
         </button>
 
         <div className="relative shrink-0 pr-2">

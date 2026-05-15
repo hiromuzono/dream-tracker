@@ -6,6 +6,7 @@ import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
 import GoalDetail from './components/GoalDetail';
 import Habits from './components/Habits';
+import Tasks from './components/Tasks';
 import GoalModal from './components/GoalModal';
 import { Goal } from './types';
 
@@ -26,6 +27,7 @@ function AppContent() {
       <main className="flex-1 overflow-hidden flex flex-col">
         {activeTab === 'dashboard' && <Dashboard onTabChange={tab => setActiveTab(tab)} />}
         {activeTab === 'habits' && <Habits />}
+        {activeTab === 'tasks' && <Tasks />}
         {activeGoal && <GoalDetail key={activeGoal.id} goal={activeGoal} />}
       </main>
 

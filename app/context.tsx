@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { AppData, Goal, Milestone, Task, Habit } from './types';
+import { AppData, Goal, Milestone, Task, Habit, StandaloneTask } from './types';
 
 const STORAGE_KEY = 'dreamtracker_data';
 
@@ -9,6 +9,8 @@ const defaultData: AppData = {
   goals: [],
   habits: [],
   habitLogs: {},
+  standaloneTasks: [],
+  memo: '',
 };
 
 interface AppContextType {
@@ -30,6 +32,12 @@ interface AppContextType {
   updateHabit: (id: string, updates: Partial<Habit>) => void;
   deleteHabit: (id: string) => void;
   toggleHabitLog: (habitId: string, date: string) => void;
+  addStandaloneTask: (task: Omit<StandaloneTask, 'id' | 'order'>) => void;
+  updateStandaloneTask: (id: string, updates: Partial<StandaloneTask>) => void;
+  deleteStandaloneTask: (id: string) => void;
+  toggleStandaloneTask: (id: string) => void;
+  reorderStandaloneTasks: (from: number, to: number) => void;
+  updateMemo: (memo: string) => void;
   importData: (data: AppData) => void;
 }
 
@@ -49,7 +57,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
-        setData(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        setData({
+          ...parsed,
+          standaloneTasks: parsed.standaloneTasks ?? [],
+          memo: parsed.memo ?? '',
+        });
       } catch {
         // ignore
       }
@@ -218,8 +231,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
     mutate(prev => ({ ...prev, habits: prev.habits.filter(h => h.id !== id) }));
   }, [mutate]);
 
+  const addStandaloneTask = useCallback((taskData: Omit<StandaloneTask, 'id' | 'order'>) => {
+    mutate(prev => ({
+      ...prev,
+      standaloneTasks: [...prev.standaloneTasks, { ...taskData, id: `st_${genId()}`, order: prev.standaloneTasks.length }],
+    }));
+  }, [mutate]);
+
+  const updateStandaloneTask = useCallback((id: string, updates: Partial<StandaloneTask>) => {
+    mutate(prev => ({
+      ...prev,
+      standaloneTasks: prev.standaloneTasks.map(t => t.id === id ? { ...t, ...updates } : t),
+    }));
+  }, [mutate]);
+
+  const deleteStandaloneTask = useCallback((id: string) => {
+    mutate(prev => ({ ...prev, standaloneTasks: prev.standaloneTasks.filter(t => t.id !== id) }));
+  }, [mutate]);
+
+  const toggleStandaloneTask = useCallback((id: string) => {
+    mutate(prev => ({
+      ...prev,
+      standaloneTasks: prev.standaloneTasks.map(t => t.id !== id ? t : {
+        ...t,
+        done: !t.done,
+        completedAt: !t.done ? new Date().toISOString() : undefined,
+      }),
+    }));
+  }, [mutate]);
+
+  const reorderStandaloneTasks = useCallback((from: number, to: number) => {
+    mutate(prev => {
+      const tasks = [...prev.standaloneTasks];
+      const [item] = tasks.splice(from, 1);
+      tasks.splice(to, 0, item);
+      return { ...prev, standaloneTasks: tasks };
+    });
+  }, [mutate]);
+
+  const updateMemo = useCallback((memo: string) => {
+    mutate(prev => ({ ...prev, memo }));
+  }, [mutate]);
+
   const importData = useCallback((newData: AppData) => {
-    mutate(() => newData);
+    mutate(() => ({
+      ...newData,
+      standaloneTasks: newData.standaloneTasks ?? [],
+      memo: newData.memo ?? '',
+    }));
   }, [mutate]);
 
   const toggleHabitLog = useCallback((habitId: string, date: string) => {
@@ -240,6 +299,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addTask, updateTask, deleteTask, toggleTask, reorderTasks,
       addHabit, updateHabit, deleteHabit,
       toggleHabitLog,
+      addStandaloneTask, updateStandaloneTask, deleteStandaloneTask, toggleStandaloneTask, reorderStandaloneTasks,
+      updateMemo,
       importData,
     }}>
       {children}

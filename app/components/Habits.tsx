@@ -3,10 +3,72 @@
 import React, { useState } from 'react';
 import { Plus, Pencil, Trash2, CheckCircle2, Circle, Flame, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useApp } from '../context';
-import { Habit } from '../types';
+import { Habit, StandaloneTask } from '../types';
 import HabitModal from './HabitModal';
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, getDay, parseISO } from 'date-fns';
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, getDay, parseISO, differenceInCalendarDays } from 'date-fns';
 import { ja } from 'date-fns/locale';
+
+const JP_DAYS_GROWTH = ['日', '月', '火', '水', '木', '金', '土'];
+
+function calcGrowthScore(habits: Habit[], habitLogs: Record<string, string[]>, standaloneTasks: StandaloneTask[]) {
+  const allDates = Object.values(habitLogs).flat().sort();
+  if (allDates.length === 0) return { score: 1.0, totalDays: 0, allDoneDays: 0, missDays: 0, lastWeekBonus: false };
+  const startStr = allDates[0];
+  const yd = new Date(); yd.setDate(yd.getDate() - 1);
+  const endStr = format(yd, 'yyyy-MM-dd');
+  if (startStr > endStr) return { score: 1.0, totalDays: 0, allDoneDays: 0, missDays: 0, lastWeekBonus: false };
+  let score = 1.0, totalDays = 0, allDoneDays = 0, missDays = 0, lastWeekBonus = false;
+  const cur = parseISO(startStr);
+  while (format(cur, 'yyyy-MM-dd') <= endStr) {
+    const ds = format(cur, 'yyyy-MM-dd');
+    const dayName = JP_DAYS_GROWTH[cur.getDay()];
+    const applicable = [
+      ...habits.filter(h => h.type === 'daily'),
+      ...habits.filter(h => h.type === 'weekly' && h.days.includes(dayName)),
+    ];
+    if (applicable.length > 0) {
+      totalDays++;
+      const allDone = applicable.every(h => (habitLogs[h.id] || []).includes(ds));
+      if (allDone) { score *= 1.01; allDoneDays++; }
+      else { score *= 0.99; missDays++; }
+    }
+    if (cur.getDay() === 0) {
+      const passedTasks = standaloneTasks.filter(t => t.dueDate && t.dueDate <= ds);
+      if (passedTasks.length > 0) {
+        const allOk = passedTasks.every(t => t.done && t.completedAt && t.completedAt.slice(0, 10) <= t.dueDate!);
+        lastWeekBonus = allOk;
+        if (allOk) score *= 1.2;
+      } else {
+        lastWeekBonus = false;
+      }
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+  return { score, totalDays, allDoneDays, missDays, lastWeekBonus };
+}
+
+function GrowthScorePanel() {
+  const { data } = useApp();
+  const { score, totalDays, allDoneDays, missDays, lastWeekBonus } = calcGrowthScore(
+    data.habits, data.habitLogs, data.standaloneTasks
+  );
+  return (
+    <div className="p-4 sm:p-6 border-b border-gray-800 bg-gray-900/60">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-sm text-gray-400 font-medium">📈 成長スコア</span>
+      </div>
+      <div className="text-3xl font-bold text-indigo-300 mb-1">{score.toFixed(3)}</div>
+      {totalDays > 0 && (
+        <p className="text-xs text-gray-500">
+          開始から {totalDays}日 | 全達成 {allDoneDays}日 | 未達成 {missDays}日
+        </p>
+      )}
+      {lastWeekBonus && (
+        <p className="text-xs text-yellow-400 mt-1">🎉 週間ボーナス達成！</p>
+      )}
+    </div>
+  );
+}
 
 function calcStreak(logs: string[]): number {
   const today = new Date();
@@ -190,6 +252,8 @@ export default function Habits() {
           <h1 className="text-white text-xl font-bold">習慣管理</h1>
         </div>
       </div>
+
+      <GrowthScorePanel />
 
       <div className="px-4 sm:px-6 py-3 border-b border-gray-800 flex items-center gap-3 flex-wrap">
         <div className="flex gap-1 bg-gray-800 rounded-lg p-1 w-fit">

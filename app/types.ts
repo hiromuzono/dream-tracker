@@ -52,8 +52,19 @@ export interface Habit {
   order: number;
 }
 
+export interface StandaloneTask {
+  id: string;
+  title: string;
+  dueDate?: string;
+  done: boolean;
+  completedAt?: string;
+  order: number;
+}
+
 export interface AppData {
   goals: Goal[];
   habits: Habit[];
   habitLogs: Record<string, string[]>;
+  standaloneTasks: StandaloneTask[];
+  memo: string;
 }
