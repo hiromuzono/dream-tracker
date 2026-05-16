@@ -266,10 +266,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const reorderStandaloneTasks = useCallback((from: number, to: number) => {
     mutate(prev => {
-      const tasks = [...prev.standaloneTasks];
-      const [item] = tasks.splice(from, 1);
-      tasks.splice(to, 0, item);
-      return { ...prev, standaloneTasks: tasks };
+      const sorted = [...prev.standaloneTasks].sort((a, b) => a.order - b.order);
+      const [item] = sorted.splice(from, 1);
+      sorted.splice(to, 0, item);
+      return { ...prev, standaloneTasks: sorted.map((t, i) => ({ ...t, order: i })) };
     });
   }, [mutate]);
 

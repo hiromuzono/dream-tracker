@@ -1,10 +1,17 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Pencil, Trash2, CheckCircle2, Circle, GripVertical, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, CheckCircle2, Circle, GripVertical, X, Clock } from 'lucide-react';
 import { useApp } from '../context';
 import { StandaloneTask } from '../types';
 import { format, differenceInCalendarDays, parseISO } from 'date-fns';
+
+function formatMinutes(min: number): string {
+  if (min < 60) return `${min}分`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m === 0 ? `${h}時間` : `${h}時間${m}分`;
+}
 
 function DueBadge({ dueDate }: { dueDate?: string }) {
   if (!dueDate) return null;
@@ -25,13 +32,22 @@ function TaskModal({ task, onClose }: TaskModalProps) {
   const { addStandaloneTask, updateStandaloneTask } = useApp();
   const [title, setTitle] = useState(task?.title ?? '');
   const [dueDate, setDueDate] = useState(task?.dueDate ?? '');
+  const [estimatedMinutes, setEstimatedMinutes] = useState(
+    task?.estimatedMinutes != null ? String(task.estimatedMinutes) : ''
+  );
 
   const handleSave = () => {
     if (!title.trim()) return;
+    const mins = estimatedMinutes !== '' ? parseInt(estimatedMinutes, 10) : undefined;
+    const payload = {
+      title: title.trim(),
+      dueDate: dueDate || undefined,
+      estimatedMinutes: mins && mins > 0 ? mins : undefined,
+    };
     if (task) {
-      updateStandaloneTask(task.id, { title: title.trim(), dueDate: dueDate || undefined });
+      updateStandaloneTask(task.id, payload);
     } else {
-      addStandaloneTask({ title: title.trim(), dueDate: dueDate || undefined, done: false });
+      addStandaloneTask({ ...payload, done: false });
     }
     onClose();
   };
@@ -55,14 +71,27 @@ function TaskModal({ task, onClose }: TaskModalProps) {
               placeholder="タスク名を入力..."
             />
           </div>
-          <div>
-            <label className="text-gray-400 text-xs mb-1 block">期限日（任意）</label>
-            <input
-              type="date"
-              value={dueDate}
-              onChange={e => setDueDate(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
-            />
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="text-gray-400 text-xs mb-1 block">期限日（任意）</label>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={e => setDueDate(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="text-gray-400 text-xs mb-1 block">所要時間（分）</label>
+              <input
+                type="number"
+                min="1"
+                value={estimatedMinutes}
+                onChange={e => setEstimatedMinutes(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
+                placeholder="例: 30"
+              />
+            </div>
           </div>
         </div>
         <div className="flex gap-3 mt-6">
@@ -84,16 +113,11 @@ function MemoArea() {
   const [value, setValue] = useState(data.memo);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
-    setValue(data.memo);
-  }, [data.memo]);
+  useEffect(() => { setValue(data.memo); }, [data.memo]);
 
   const autoResize = () => {
     const el = textareaRef.current;
-    if (el) {
-      el.style.height = 'auto';
-      el.style.height = el.scrollHeight + 'px';
-    }
+    if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
   };
 
   useEffect(() => { autoResize(); }, [value]);
@@ -125,9 +149,13 @@ export default function Tasks() {
   const pending = tasks.filter(t => !t.done);
   const done = tasks.filter(t => t.done);
 
+  const totalMinutes = pending.reduce((s, t) => s + (t.estimatedMinutes ?? 0), 0);
+
   const handleDrop = (toIdx: number) => {
     if (dragIdx !== null && dragIdx !== toIdx) {
-      reorderStandaloneTasks(dragIdx, toIdx);
+      const fromTaskIdx = tasks.indexOf(pending[dragIdx]);
+      const toTaskIdx = tasks.indexOf(pending[toIdx]);
+      reorderStandaloneTasks(fromTaskIdx, toTaskIdx);
     }
     setDragIdx(null);
     setDropIdx(null);
@@ -137,9 +165,17 @@ export default function Tasks() {
     <div className="flex flex-col h-full">
       <div className="p-4 sm:p-6 border-b border-gray-800">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">📋</span>
-            <h1 className="text-white text-xl font-bold">タスク管理</h1>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">📋</span>
+              <h1 className="text-white text-xl font-bold">タスク管理</h1>
+            </div>
+            {totalMinutes > 0 && (
+              <span className="flex items-center gap-1 text-sm text-gray-400 bg-gray-800 px-2.5 py-1 rounded-lg">
+                <Clock size={13} />
+                合計 {formatMinutes(totalMinutes)}
+              </span>
+            )}
           </div>
           <button onClick={() => setAddModal(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-lg transition-colors">
@@ -149,7 +185,6 @@ export default function Tasks() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-        {/* 未完了タスク */}
         {pending.length === 0 ? (
           <p className="text-gray-700 text-sm text-center py-8">タスクがありません。追加してみましょう！</p>
         ) : (
@@ -157,20 +192,27 @@ export default function Tasks() {
             {pending.map((task, idx) => (
               <div key={task.id}
                 draggable
-                onDragStart={() => setDragIdx(idx)}
-                onDragOver={e => { e.preventDefault(); setDropIdx(idx); }}
-                onDrop={() => handleDrop(idx)}
+                onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setDragIdx(idx); }}
+                onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropIdx(idx); }}
+                onDrop={e => { e.preventDefault(); handleDrop(idx); }}
                 onDragEnd={() => { setDragIdx(null); setDropIdx(null); }}
-                className={`flex items-center gap-3 py-3 px-4 bg-gray-800/40 rounded-xl hover:bg-gray-800/60 transition-colors group ${dropIdx === idx ? 'ring-2 ring-indigo-500/50' : ''}`}>
-                <GripVertical size={14} className="text-gray-700 group-hover:text-gray-500 cursor-grab shrink-0" />
+                className={`flex items-center gap-3 py-3 px-4 bg-gray-800/40 rounded-xl hover:bg-gray-800/60 transition-colors group ${dropIdx === idx && dragIdx !== idx ? 'ring-2 ring-indigo-500/50' : ''} ${dragIdx === idx ? 'opacity-50' : ''}`}>
+                <GripVertical size={14} className="text-gray-700 group-hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0" />
                 <button onClick={() => toggleStandaloneTask(task.id)} className="shrink-0">
                   <Circle size={20} className="text-gray-600 hover:text-indigo-400 transition-colors" />
                 </button>
                 <div className="flex-1 min-w-0">
                   <span className="text-sm text-gray-200">{task.title}</span>
-                  {task.dueDate && (
-                    <p className="text-xs text-gray-600 mt-0.5">{task.dueDate}</p>
-                  )}
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    {task.dueDate && (
+                      <span className="text-xs text-gray-600">{task.dueDate}</span>
+                    )}
+                    {task.estimatedMinutes != null && task.estimatedMinutes > 0 && (
+                      <span className="text-xs text-gray-500 flex items-center gap-0.5">
+                        <Clock size={10} />{formatMinutes(task.estimatedMinutes)}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <DueBadge dueDate={task.dueDate} />
                 <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -186,7 +228,6 @@ export default function Tasks() {
           </div>
         )}
 
-        {/* 完了済みタスク */}
         {done.length > 0 && (
           <div className="mt-6">
             <button onClick={() => setShowDone(v => !v)}
@@ -202,7 +243,14 @@ export default function Tasks() {
                     <button onClick={() => toggleStandaloneTask(task.id)} className="shrink-0">
                       <CheckCircle2 size={20} className="text-indigo-400/60" />
                     </button>
-                    <span className="flex-1 text-sm text-gray-600 line-through">{task.title}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm text-gray-600 line-through">{task.title}</span>
+                      {task.estimatedMinutes != null && task.estimatedMinutes > 0 && (
+                        <span className="ml-2 text-xs text-gray-700 flex items-center gap-0.5 inline-flex">
+                          <Clock size={10} />{formatMinutes(task.estimatedMinutes)}
+                        </span>
+                      )}
+                    </div>
                     <button onClick={() => deleteStandaloneTask(task.id)}
                       className="text-gray-700 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Trash2 size={14} />

@@ -56,6 +56,7 @@ export interface StandaloneTask {
   id: string;
   title: string;
   dueDate?: string;
+  estimatedMinutes?: number;
   done: boolean;
   completedAt?: string;
   order: number;
