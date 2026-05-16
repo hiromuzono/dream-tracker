@@ -97,7 +97,7 @@ export default function Navigation({ activeTab, onTabChange, onAddGoal }: Props)
         <button
           onClick={() => { onTabChange('dashboard'); setGoalDrawer(false); }}
           className={`flex-1 text-xs font-medium ${tabCls(activeTab === 'dashboard')}`}>
-          ダッシュボード
+          ボード
         </button>
 
         <div className="flex-1 relative">

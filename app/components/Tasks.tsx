@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Pencil, Trash2, CheckCircle2, Circle, GripVertical, X, Clock } from 'lucide-react';
 import { useApp } from '../context';
 import { StandaloneTask } from '../types';
-import { format, differenceInCalendarDays, parseISO } from 'date-fns';
+import { format, differenceInCalendarDays, parseISO, addDays } from 'date-fns';
 
 function formatMinutes(min: number): string {
   if (min < 60) return `${min}分`;
@@ -149,7 +149,15 @@ export default function Tasks() {
   const pending = tasks.filter(t => !t.done);
   const done = tasks.filter(t => t.done);
 
-  const totalMinutes = pending.reduce((s, t) => s + (t.estimatedMinutes ?? 0), 0);
+  const today = new Date();
+  const day = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + (day === 0 ? -6 : 1 - day));
+  const weekStart = format(monday, 'yyyy-MM-dd');
+  const weekEnd = format(addDays(monday, 6), 'yyyy-MM-dd');
+  const thisWeekMinutes = pending
+    .filter(t => t.dueDate && t.dueDate >= weekStart && t.dueDate <= weekEnd)
+    .reduce((s, t) => s + (t.estimatedMinutes ?? 0), 0);
 
   const handleDrop = (toIdx: number) => {
     if (dragIdx !== null && dragIdx !== toIdx) {
@@ -168,12 +176,12 @@ export default function Tasks() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <span className="text-xl">📋</span>
-              <h1 className="text-white text-xl font-bold">タスク管理</h1>
+              <h1 className="text-white text-xl font-bold">タスク</h1>
             </div>
-            {totalMinutes > 0 && (
+            {thisWeekMinutes > 0 && (
               <span className="flex items-center gap-1 text-sm text-gray-400 bg-gray-800 px-2.5 py-1 rounded-lg">
                 <Clock size={13} />
-                合計 {formatMinutes(totalMinutes)}
+                今週 {formatMinutes(thisWeekMinutes)}
               </span>
             )}
           </div>
