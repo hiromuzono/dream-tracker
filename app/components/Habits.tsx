@@ -29,9 +29,8 @@ function calcGrowthScore(habits: Habit[], habitLogs: Record<string, string[]>, s
   const yd = new Date(); yd.setDate(yd.getDate() - 1);
   const endStr = format(yd, 'yyyy-MM-dd');
   if (startDate > endStr) return { score: 1.0, totalDays: 0, allDoneDays: 0, missDays: 0, lastWeekBonus: false };
-  const startStr = startDate;
   let score = 1.0, totalDays = 0, allDoneDays = 0, missDays = 0, lastWeekBonus = false;
-  const cur = parseISO(startStr);
+  const cur = parseISO(startDate);
   while (format(cur, 'yyyy-MM-dd') <= endStr) {
     const ds = format(cur, 'yyyy-MM-dd');
     const dayName = JP_DAYS_GROWTH[cur.getDay()];
@@ -41,16 +40,20 @@ function calcGrowthScore(habits: Habit[], habitLogs: Record<string, string[]>, s
     ];
     if (applicable.length > 0) {
       totalDays++;
-      const allDone = applicable.every(h => (habitLogs[h.id] || []).includes(getLogKey(h.type, ds)));
-      if (allDone) { score *= 1.01; allDoneDays++; }
-      else { score *= 0.99; missDays++; }
+      const doneCount = applicable.filter(h => (habitLogs[h.id] || []).includes(getLogKey(h.type, ds))).length;
+      const ratio = doneCount / applicable.length;
+      if (ratio === 1) { score *= 1.1; allDoneDays++; }
+      else if (ratio < 0.5) { score *= 0.9; missDays++; }
     }
     if (cur.getDay() === 0) {
-      const passedTasks = standaloneTasks.filter(t => t.dueDate && t.dueDate <= ds);
-      if (passedTasks.length > 0) {
-        const allOk = passedTasks.every(t => t.done && t.completedAt && t.completedAt.slice(0, 10) <= t.dueDate!);
-        lastWeekBonus = allOk;
-        if (allOk) score *= 1.2;
+      const weekStart = getWeekKey(ds);
+      const weekTasks = standaloneTasks.filter(t => t.dueDate && t.dueDate >= weekStart && t.dueDate <= ds);
+      if (weekTasks.length > 0) {
+        const doneOnTime = weekTasks.filter(t => t.done && t.completedAt && t.completedAt.slice(0, 10) <= t.dueDate!).length;
+        const ratio = doneOnTime / weekTasks.length;
+        lastWeekBonus = ratio === 1;
+        if (ratio === 1) score *= 1.1;
+        else if (ratio < 0.5) score *= 0.9;
       } else {
         lastWeekBonus = false;
       }
