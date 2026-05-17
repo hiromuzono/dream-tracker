@@ -5,15 +5,12 @@ import { AppData, Goal, Milestone, Task, Habit, StandaloneTask } from './types';
 
 const STORAGE_KEY = 'dreamtracker_data';
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
-
 const defaultData: AppData = {
   goals: [],
   habits: [],
   habitLogs: {},
   standaloneTasks: [],
   memo: '',
-  growthScoreStartDate: todayStr(),
 };
 
 interface AppContextType {
@@ -65,7 +62,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...parsed,
           standaloneTasks: parsed.standaloneTasks ?? [],
           memo: parsed.memo ?? '',
-          growthScoreStartDate: parsed.growthScoreStartDate ?? todayStr(),
         });
       } catch {
         // ignore
@@ -282,7 +278,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...newData,
       standaloneTasks: newData.standaloneTasks ?? [],
       memo: newData.memo ?? '',
-      growthScoreStartDate: newData.growthScoreStartDate ?? todayStr(),
     }));
   }, [mutate]);
 

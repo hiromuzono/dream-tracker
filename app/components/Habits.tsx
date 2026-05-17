@@ -25,12 +25,13 @@ function getLogKey(habitType: string, dateStr: string): string {
   return dateStr;
 }
 
-function calcGrowthScore(habits: Habit[], habitLogs: Record<string, string[]>, standaloneTasks: StandaloneTask[], startDate: string) {
+function calcGrowthScore(habits: Habit[], habitLogs: Record<string, string[]>, standaloneTasks: StandaloneTask[]) {
+  const allDates = Object.values(habitLogs).flat().sort();
   const yd = new Date(); yd.setDate(yd.getDate() - 1);
   const endStr = format(yd, 'yyyy-MM-dd');
-  if (startDate > endStr) return { score: 1.0, totalDays: 0, allDoneDays: 0, missDays: 0, lastWeekBonus: false };
+  if (allDates.length === 0 || allDates[0] > endStr) return { score: 1.0, totalDays: 0, allDoneDays: 0, missDays: 0, lastWeekBonus: false };
   let score = 1.0, totalDays = 0, allDoneDays = 0, missDays = 0, lastWeekBonus = false;
-  const cur = parseISO(startDate);
+  const cur = parseISO(allDates[0]);
   while (format(cur, 'yyyy-MM-dd') <= endStr) {
     const ds = format(cur, 'yyyy-MM-dd');
     const dayName = JP_DAYS_GROWTH[cur.getDay()];
@@ -66,7 +67,7 @@ function calcGrowthScore(habits: Habit[], habitLogs: Record<string, string[]>, s
 function GrowthScorePanel() {
   const { data } = useApp();
   const { score, totalDays, allDoneDays, missDays, lastWeekBonus } = calcGrowthScore(
-    data.habits, data.habitLogs, data.standaloneTasks, data.growthScoreStartDate
+    data.habits, data.habitLogs, data.standaloneTasks
   );
   return (
     <div className="p-4 sm:p-6 border-b border-gray-800 bg-gray-900/60">

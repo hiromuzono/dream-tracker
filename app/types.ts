@@ -68,5 +68,4 @@ export interface AppData {
   habitLogs: Record<string, string[]>;
   standaloneTasks: StandaloneTask[];
   memo: string;
-  growthScoreStartDate: string;
 }
