@@ -50,6 +50,8 @@ export interface Habit {
   days: string[];
   goalId: string;
   order: number;
+  createdAt: string;
+  deletedAt?: string;
 }
 
 export interface StandaloneTask {

@@ -44,7 +44,7 @@ function useTaskItems(tab: Tab) {
   const items: TaskItem[] = [];
 
   if (tab === 'today') {
-    data.habits.filter(h => h.type === 'daily').forEach(h => {
+    data.habits.filter(h => h.type === 'daily' && !h.deletedAt).forEach(h => {
       const goal = h.goalId ? goalMap.get(h.goalId) : undefined;
       const logs = data.habitLogs[h.id] || [];
       items.push({
@@ -55,7 +55,7 @@ function useTaskItems(tab: Tab) {
     });
     const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
     const todayDay = dayNames[today.getDay()];
-    data.habits.filter(h => h.type === 'weekly' && h.days.includes(todayDay)).forEach(h => {
+    data.habits.filter(h => h.type === 'weekly' && !h.deletedAt && h.days.includes(todayDay)).forEach(h => {
       const goal = h.goalId ? goalMap.get(h.goalId) : undefined;
       items.push({
         type: 'habit', id: `w-${h.id}`, title: h.title,
@@ -66,7 +66,7 @@ function useTaskItems(tab: Tab) {
   }
 
   if (tab === 'week') {
-    data.habits.filter(h => h.type === 'weekly').forEach(h => {
+    data.habits.filter(h => h.type === 'weekly' && !h.deletedAt).forEach(h => {
       const goal = h.goalId ? goalMap.get(h.goalId) : undefined;
       items.push({
         type: 'habit', id: h.id, title: h.title,
@@ -77,7 +77,7 @@ function useTaskItems(tab: Tab) {
   }
 
   if (tab === 'month') {
-    data.habits.filter(h => h.type === 'monthly').forEach(h => {
+    data.habits.filter(h => h.type === 'monthly' && !h.deletedAt).forEach(h => {
       const goal = h.goalId ? goalMap.get(h.goalId) : undefined;
       items.push({
         type: 'habit', id: h.id, title: h.title,

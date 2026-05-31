@@ -35,9 +35,10 @@ function calcGrowthScore(habits: Habit[], habitLogs: Record<string, string[]>, s
   while (format(cur, 'yyyy-MM-dd') <= endStr) {
     const ds = format(cur, 'yyyy-MM-dd');
     const dayName = JP_DAYS_GROWTH[cur.getDay()];
+    const isActive = (h: Habit) => h.createdAt <= ds && (!h.deletedAt || h.deletedAt > ds);
     const applicable = [
-      ...habits.filter(h => h.type === 'daily'),
-      ...habits.filter(h => h.type === 'weekly' && h.days.includes(dayName)),
+      ...habits.filter(h => h.type === 'daily' && isActive(h)),
+      ...habits.filter(h => h.type === 'weekly' && h.days.includes(dayName) && isActive(h)),
     ];
     if (applicable.length > 0) {
       totalDays++;
@@ -164,8 +165,8 @@ function CalendarView() {
   const { data } = useApp();
   const [month, setMonth] = useState(new Date());
 
-  const dailyHabits = data.habits.filter(h => h.type === 'daily');
-  const weeklyHabits = data.habits.filter(h => h.type === 'weekly');
+  const dailyHabits = data.habits.filter(h => h.type === 'daily' && !h.deletedAt);
+  const weeklyHabits = data.habits.filter(h => h.type === 'weekly' && !h.deletedAt);
   const start = startOfMonth(month);
   const end = endOfMonth(month);
   const days = eachDayOfInterval({ start, end });
@@ -176,8 +177,9 @@ function CalendarView() {
   const getCounts = (date: Date) => {
     const ds = format(date, 'yyyy-MM-dd');
     const dayName = JP_DAY_NAMES[date.getDay()];
-    const weeklyForDay = weeklyHabits.filter(h => h.days.includes(dayName));
-    const applicable = [...dailyHabits, ...weeklyForDay];
+    const isActive = (h: Habit) => h.createdAt <= ds && (!h.deletedAt || h.deletedAt > ds);
+    const weeklyForDay = weeklyHabits.filter(h => h.days.includes(dayName) && isActive(h));
+    const applicable = [...dailyHabits.filter(isActive), ...weeklyForDay];
     const total = applicable.length;
     if (total === 0) return { done: 0, total: 0 };
     const done = applicable.filter(h => (data.habitLogs[h.id] || []).includes(getLogKey(h.type, ds))).length;
@@ -256,9 +258,9 @@ export default function Habits() {
     }
   };
 
-  const daily = data.habits.filter(h => h.type === 'daily');
-  const weekly = data.habits.filter(h => h.type === 'weekly');
-  const monthly = data.habits.filter(h => h.type === 'monthly');
+  const daily = data.habits.filter(h => h.type === 'daily' && !h.deletedAt);
+  const weekly = data.habits.filter(h => h.type === 'weekly' && !h.deletedAt);
+  const monthly = data.habits.filter(h => h.type === 'monthly' && !h.deletedAt);
 
   return (
     <div className="flex flex-col h-full">

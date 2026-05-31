@@ -62,6 +62,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...parsed,
           standaloneTasks: parsed.standaloneTasks ?? [],
           memo: parsed.memo ?? '',
+          habits: (parsed.habits ?? []).map((h: Habit) => ({
+            ...h,
+            createdAt: h.createdAt ?? '1970-01-01',
+          })),
         });
       } catch {
         // ignore
@@ -217,9 +221,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [mutate]);
 
   const addHabit = useCallback((habitData: Omit<Habit, 'id' | 'order'>) => {
+    const today = new Date().toISOString().slice(0, 10);
     mutate(prev => ({
       ...prev,
-      habits: [...prev.habits, { ...habitData, id: `h_${genId()}`, order: prev.habits.length }],
+      habits: [...prev.habits, { ...habitData, id: `h_${genId()}`, order: prev.habits.length, createdAt: today }],
     }));
   }, [mutate]);
 
@@ -228,7 +233,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [mutate]);
 
   const deleteHabit = useCallback((id: string) => {
-    mutate(prev => ({ ...prev, habits: prev.habits.filter(h => h.id !== id) }));
+    const today = new Date().toISOString().slice(0, 10);
+    mutate(prev => ({
+      ...prev,
+      habits: prev.habits.map(h => h.id === id ? { ...h, deletedAt: today } : h),
+    }));
   }, [mutate]);
 
   const addStandaloneTask = useCallback((taskData: Omit<StandaloneTask, 'id' | 'order'>) => {
