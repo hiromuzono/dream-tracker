@@ -28,7 +28,7 @@ interface AppContextType {
   deleteTask: (goalId: string, msId: string, taskId: string) => void;
   toggleTask: (goalId: string, msId: string, taskId: string) => void;
   reorderTasks: (goalId: string, msId: string, from: number, to: number) => void;
-  addHabit: (habit: Omit<Habit, 'id' | 'order'>) => void;
+  addHabit: (habit: Omit<Habit, 'id' | 'order' | 'createdAt' | 'deletedAt'>) => void;
   updateHabit: (id: string, updates: Partial<Habit>) => void;
   deleteHabit: (id: string) => void;
   toggleHabitLog: (habitId: string, date: string) => void;
@@ -220,7 +220,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   }, [mutate]);
 
-  const addHabit = useCallback((habitData: Omit<Habit, 'id' | 'order'>) => {
+  const addHabit = useCallback((habitData: Omit<Habit, 'id' | 'order' | 'createdAt' | 'deletedAt'>) => {
     const today = new Date().toISOString().slice(0, 10);
     mutate(prev => ({
       ...prev,
